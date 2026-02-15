@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function CheckInPage() {
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+  const [lastCode, setLastCode] = useState<string | null>(null);
 
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
@@ -17,6 +19,10 @@ export default function CheckInPage() {
     if (!code) return;
 
     checkIn(code);
+
+    // ⭐ сохраняем последний код для backup QR
+    setLastCode(code);
+
     setWristband("");
   };
 
@@ -84,6 +90,30 @@ export default function CheckInPage() {
         Confirm Check In
       </button>
 
+      {/* ⭐ BACKUP QR FOR PHONE */}
+      {lastCode && (
+        <div
+          style={{
+            marginTop: 20,
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid #eee",
+            background: "#fafafa",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>
+            Backup QR for phone
+          </div>
+
+          <QRCodeCanvas value={lastCode} size={220} />
+
+          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7 }}>
+            Guest scans this once to keep digital backup.
+          </div>
+        </div>
+      )}
+
       {/* LINKS */}
       <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
         <Link href="/checkout" style={{ textDecoration: "none", color: "#111" }}>
@@ -124,12 +154,7 @@ export default function CheckInPage() {
       {showScanner && (
         <QRScanner
           onResult={(text) => {
-            // ✅ РЕКОМЕНДУЮ: сразу делать чек-ин после скана
             doCheckIn(text);
-
-            // Если хочешь только заполнить поле, замени строку выше на:
-            // setWristband(text);
-
             setShowScanner(false);
           }}
           onClose={() => setShowScanner(false)}
