@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
@@ -9,21 +9,36 @@ import { QRCodeCanvas } from "qrcode.react";
 export default function CheckInPage() {
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+
+  // ✅ backup modal
   const [lastCode, setLastCode] = useState<string | null>(null);
+  const [showBackup, setShowBackup] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    // чтобы QR в модалке был полноценной ссылкой (работает и на Vercel)
+    setOrigin(window.location.origin);
+  }, []);
 
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
+
+  const backupUrl = useMemo(() => {
+    if (!lastCode) return "";
+    // ссылка на страницу дубля
+    return `${origin}/b/${encodeURIComponent(lastCode)}`;
+  }, [origin, lastCode]);
 
   const doCheckIn = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
 
     checkIn(code);
-
-    // ⭐ сохраняем последний код для backup QR
-    setLastCode(code);
-
     setWristband("");
+
+    // ✅ после чек-ина показываем backup QR
+    setLastCode(code);
+    setShowBackup(true);
   };
 
   return (
@@ -56,7 +71,6 @@ export default function CheckInPage() {
         }}
       />
 
-      {/* OPEN CAMERA BUTTON */}
       <button
         type="button"
         onClick={() => setShowScanner(true)}
@@ -90,31 +104,6 @@ export default function CheckInPage() {
         Confirm Check In
       </button>
 
-      {/* ⭐ BACKUP QR FOR PHONE */}
-      {lastCode && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 16,
-            borderRadius: 12,
-            border: "1px solid #eee",
-            background: "#fafafa",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>
-            Backup QR for phone
-          </div>
-
-          <QRCodeCanvas value={lastCode} size={220} />
-
-          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7 }}>
-            Guest scans this once to keep digital backup.
-          </div>
-        </div>
-      )}
-
-      {/* LINKS */}
       <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
         <Link href="/checkout" style={{ textDecoration: "none", color: "#111" }}>
           Go to Check Out →
@@ -124,7 +113,6 @@ export default function CheckInPage() {
         </Link>
       </div>
 
-      {/* LIST */}
       <div style={{ marginTop: 30, width: 320 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
           Checked In Items:
@@ -154,11 +142,124 @@ export default function CheckInPage() {
       {showScanner && (
         <QRScanner
           onResult={(text) => {
+            // ✅ сразу чек-ин после скана
             doCheckIn(text);
             setShowScanner(false);
           }}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {/* ✅ BACKUP QR MODAL */}
+      {showBackup && lastCode && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 10000,
+          }}
+          onClick={() => setShowBackup(false)}
+        >
+          <div
+            style={{
+              width: "min(520px, 100%)",
+              background: "white",
+              borderRadius: 12,
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              <strong>Backup QR for guest phone</strong>
+              <button
+                type="button"
+                onClick={() => setShowBackup(false)}
+                style={{
+                  border: "1px solid #ddd",
+                  background: "white",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ padding: 12 }}>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    border: "1px solid #eee",
+                    borderRadius: 12,
+                    padding: 10,
+                  }}
+                >
+                  <QRCodeCanvas value={backupUrl || lastCode} size={220} includeMargin />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ fontSize: 13, opacity: 0.75 }}>
+                    Guest scans this once → gets their QR page
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800 }}>
+                    #{lastCode}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                      fontSize: 12,
+                      opacity: 0.8,
+                      wordBreak: "break-all",
+                      border: "1px dashed #ddd",
+                      borderRadius: 10,
+                      padding: 10,
+                    }}
+                  >
+                    {backupUrl}
+                  </div>
+
+                  <a
+                    href={`/b/${encodeURIComponent(lastCode)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "inline-block",
+                      marginTop: 10,
+                      textDecoration: "none",
+                      border: "1px solid #111",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      color: "#111",
+                      fontSize: 14,
+                    }}
+                  >
+                    Open backup page →
+                  </a>
+
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+                    Tip: “Add to Home Screen” on phone.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
