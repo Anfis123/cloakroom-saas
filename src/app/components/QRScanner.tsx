@@ -24,21 +24,25 @@ export default function QRScanner({ onResult, onClose }: Props) {
         const video = videoRef.current;
         if (!video) return;
 
-        await reader.decodeFromVideoDevice(undefined, video, (result, err) => {
-          if (!active) return;
+        await reader.decodeFromVideoDevice(
+          undefined,
+          video,
+          (result, err) => {
+            if (!active) return;
 
-          if (result) {
-            const text = result.getText();
-            onResult(text);
-            onClose();
-            return;
-          }
+            if (result) {
+              const text = result.getText();
+              onResult(text);
+              onClose();
+              return;
+            }
 
-          const name = (err as any)?.name;
-          if (err && name !== "NotFoundException") {
-            setError("Camera error. Try again.");
+            const name = (err as any)?.name;
+            if (err && name !== "NotFoundException") {
+              setError("Camera error. Try again.");
+            }
           }
-        });
+        );
       } catch (e: any) {
         setError(
           e?.message ||
@@ -50,12 +54,10 @@ export default function QRScanner({ onResult, onClose }: Props) {
     return () => {
       active = false;
 
-      // ✅ Правильная остановка для @zxing/browser
-      try {
-        readerRef.current?.stopContinuousDecode();
-      } catch {}
+      // ✅ ВАЖНО:
+      // В новой версии @zxing/browser НЕ вызываем reset() или stopContinuousDecode()
+      // Просто останавливаем MediaStream — это корректный способ.
 
-      // (опционально) можно ещё остановить видео-треки на всякий случай
       try {
         const v = videoRef.current;
         const stream = v?.srcObject as MediaStream | null;
