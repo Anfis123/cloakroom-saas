@@ -1,88 +1,158 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
-export type ItemStatus = "IN" | "OUT";
+export type CloakroomStatus = "IN" | "OUT";
+
+export type CloakroomEvent = {
+  type: CloakroomStatus; // IN / OUT
+  at: number;            // Date.now()
+  staff?: string;        // optional: staff name/id
+};
 
 export type CloakroomItem = {
   code: string;
-  status: ItemStatus;
-  checkedInAt: number; // timestamp
-  checkedOutAt?: number; // timestamp
+  status: CloakroomStatus;
+  createdAt: number;     // when first seen
+  updatedAt: number;     // last change
+  events: CloakroomEvent[];
 };
+
+type CheckResult =
+  | { ok: true }
+  | { ok: false; reason: "NOT_FOUND" | "ALREADY_IN" | "ALREADY_OUT" };
 
 type CloakroomState = {
   items: CloakroomItem[];
 
-  checkIn: (code: string) => { ok: boolean; reason?: string };
-  checkOut: (code: string) => { ok: boolean; reason?: string };
-  resetAll: () => void;
+  // derived helpers (optional convenience)
+  getActive: () => CloakroomItem[];
+  getHistory: () => CloakroomItem[];
+
+  checkIn: (code: string) => CheckResult;
+  checkOut: (code: string) => CheckResult;
+
+  // optional: clean old OUT items from history (does NOT touch active)
+  clearHistoryOlderThan: (ms: number) => void;
 };
 
-export const useCloakroomStore = create<CloakroomState>()(
-  persist(
-    (set, get) => ({
-      items: [],
+function now() {
+  return Date.now();
+}
 
-      checkIn: (rawCode) => {
-        const code = rawCode.trim();
-        if (!code) return { ok: false, reason: "EMPTY_CODE" };
+function readStaffLabel(): string | undefined {
+  // если захочешь: на login странице сохрани localStorage.setItem("staff_name", "Anfisa")
+  try {
+    const s = localStorage.getItem("staff_name");
+    return s && s.trim() ? s.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
-        const items = get().items;
-        const existing = items.find((it) => it.code === code);
+export const useCloakroomStore = create<CloakroomState>((set, get) => ({
+  items: [],
 
-        // ✅ esli uzhe IN — ne dobavlyaem dublikat
-        if (existing && existing.status === "IN") {
-          return { ok: true, reason: "ALREADY_IN" };
-        }
+  getActive: () => get().items.filter((it) => it.status === "IN"),
+  getHistory: () => get().items.filter((it) => it.status === "OUT"),
 
-        // ✅ esli byl OUT — vozvraschaem v IN
-        if (existing && existing.status === "OUT") {
-          set({
-            items: items.map((it) =>
-              it.code === code
-                ? { ...it, status: "IN", checkedInAt: Date.now(), checkedOutAt: undefined }
-                : it
-            ),
-          });
-          return { ok: true, reason: "REOPENED" };
-        }
+  checkIn: (raw: string) => {
+    const code = raw.trim();
+    if (!code) return { ok: false, reason: "NOT_FOUND" };
 
-        // ✅ esli netu — dobavlyaem novyj
-        set({
-          items: [
-            ...items,
-            {
-              code,
-              status: "IN",
-              checkedInAt: Date.now(),
-            },
-          ],
-        });
+    const staff = readStaffLabel();
+    const t = now();
 
-        return { ok: true };
-      },
+    let result: CheckResult = { ok: true };
 
-      checkOut: (rawCode) => {
-        const code = rawCode.trim();
-        if (!code) return { ok: false, reason: "EMPTY_CODE" };
+    set((state) => {
+      const idx = state.items.findIndex((it) => it.code === code);
 
-        const items = get().items;
-        const existing = items.find((it) => it.code === code);
+      // новый item
+      if (idx === -1) {
+        const item: CloakroomItem = {
+          code,
+          status: "IN",
+          createdAt: t,
+          updatedAt: t,
+          events: [{ type: "IN", at: t, staff }],
+        };
+        return { items: [item, ...state.items] };
+      }
 
-        if (!existing) return { ok: false, reason: "NOT_FOUND" };
-        if (existing.status === "OUT") return { ok: false, reason: "ALREADY_OUT" };
+      const item = state.items[idx];
 
-        set({
-          items: items.map((it) =>
-            it.code === code ? { ...it, status: "OUT", checkedOutAt: Date.now() } : it
-          ),
-        });
+      // уже IN -> не дублируем
+      if (item.status === "IN") {
+        result = { ok: false, reason: "ALREADY_IN" };
+        return state;
+      }
 
-        return { ok: true };
-      },
+      // был OUT -> снова IN (это нормально, пишем новый event)
+      const updated: CloakroomItem = {
+        ...item,
+        status: "IN",
+        updatedAt: t,
+        events: [...item.events, { type: "IN", at: t, staff }],
+      };
 
-      resetAll: () => set({ items: [] }),
-    }),
-    { name: "cloakroom-store-v1" }
-  )
-);
+      const items = state.items.slice();
+      items[idx] = updated;
+
+      // поднимем вверх список (удобнее)
+      items.sort((a, b) => b.updatedAt - a.updatedAt);
+
+      return { items };
+    });
+
+    return result;
+  },
+
+  checkOut: (raw: string) => {
+    const code = raw.trim();
+    if (!code) return { ok: false, reason: "NOT_FOUND" };
+
+    const staff = readStaffLabel();
+    const t = now();
+
+    let result: CheckResult = { ok: true };
+
+    set((state) => {
+      const idx = state.items.findIndex((it) => it.code === code);
+      if (idx === -1) {
+        result = { ok: false, reason: "NOT_FOUND" };
+        return state;
+      }
+
+      const item = state.items[idx];
+
+      // уже OUT -> второй раз не снимаем
+      if (item.status === "OUT") {
+        result = { ok: false, reason: "ALREADY_OUT" };
+        return state;
+      }
+
+      const updated: CloakroomItem = {
+        ...item,
+        status: "OUT",
+        updatedAt: t,
+        events: [...item.events, { type: "OUT", at: t, staff }],
+      };
+
+      const items = state.items.slice();
+      items[idx] = updated;
+
+      // сортировка по последнему действию
+      items.sort((a, b) => b.updatedAt - a.updatedAt);
+
+      return { items };
+    });
+
+    return result;
+  },
+
+  clearHistoryOlderThan: (ms: number) => {
+    const cutoff = now() - ms;
+    set((state) => ({
+      items: state.items.filter((it) => !(it.status === "OUT" && it.updatedAt < cutoff)),
+    }));
+  },
+}));

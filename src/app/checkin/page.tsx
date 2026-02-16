@@ -8,7 +8,6 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckInPage() {
-  // ✅ hooks dolzhny byt' vsegda vyzvany do lyubyh return
   const ready = useRequireStaff();
 
   const [wristband, setWristband] = useState("");
@@ -26,6 +25,12 @@ export default function CheckInPage() {
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
+  // ✅ показываем только активные (IN)
+  const inItems = useMemo(
+    () => items.filter((it) => it.status === "IN").sort((a, b) => b.updatedAt - a.updatedAt),
+    [items]
+  );
+
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
@@ -35,15 +40,18 @@ export default function CheckInPage() {
     const code = raw.trim();
     if (!code) return;
 
-    // ✅ store sam predotvraschaet dublikat
-    checkIn(code);
+    const res = checkIn(code);
+
+    // ✅ показываем backup только если реально зачекинили (а не дубль)
+    if (res.ok) {
+      setLastCode(code);
+      setShowBackup(true);
+    }
 
     setWristband("");
-    setLastCode(code);
-    setShowBackup(true);
   };
 
-  // ✅ tol'ko posle vseh hooks
+  // ✅ важно: return только ПОСЛЕ хуков
   if (!ready) return null;
 
   return (
@@ -120,14 +128,14 @@ export default function CheckInPage() {
 
       <div style={{ marginTop: 30, width: 360 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-          Checked In Items:
+          Active (IN) Items:
         </h2>
 
-        {items.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No items yet.</div>
+        {inItems.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No active items.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((item) => (
+            {inItems.map((item) => (
               <li
                 key={item.code}
                 style={{
@@ -140,7 +148,9 @@ export default function CheckInPage() {
                 }}
               >
                 <span>#{item.code}</span>
-                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>
+                  {new Date(item.updatedAt).toLocaleTimeString()}
+                </span>
               </li>
             ))}
           </ul>
@@ -242,7 +252,6 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
-                  {/* ✅ V TOI ZHE VKLADKE */}
                   <Link
                     href={`/b/${encodeURIComponent(lastCode)}`}
                     onClick={() => setShowBackup(false)}

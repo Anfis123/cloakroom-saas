@@ -14,19 +14,26 @@ export default function CheckOutPage() {
   const items = useCloakroomStore((s) => s.items);
   const checkOut = useCloakroomStore((s) => s.checkOut);
 
-  const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
-
-  // ✅ tol'ko posle vseh hooks
-  if (!ready) return null;
+  // ✅ показываем только активные (IN)
+  const inItems = useMemo(
+    () => items.filter((it) => it.status === "IN").sort((a, b) => b.updatedAt - a.updatedAt),
+    [items]
+  );
 
   const doCheckOut = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
 
-    checkOut(code);
+    const res = checkOut(code);
+
+    // показываем подтверждение только если реально сняли (а не "not found"/"already out")
+    if (res?.ok) setLastCheckedOut(code);
+
     setWristband("");
-    setLastCheckedOut(code);
   };
+
+  // ✅ важно: return только ПОСЛЕ хуков
+  if (!ready) return null;
 
   return (
     <main
@@ -83,11 +90,11 @@ export default function CheckOutPage() {
 
       <div style={{ marginTop: 26, width: 360 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-          Checked In Items:
+          Active (IN) Items:
         </h2>
 
         {inItems.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No items yet.</div>
+          <div style={{ opacity: 0.7 }}>No active items.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {inItems.map((item) => (
@@ -103,7 +110,9 @@ export default function CheckOutPage() {
                 }}
               >
                 <span>#{item.code}</span>
-                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>
+                  {new Date(item.updatedAt).toLocaleTimeString()}
+                </span>
               </li>
             ))}
           </ul>
