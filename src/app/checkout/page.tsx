@@ -1,31 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useCloakroomStore } from "../store/cloakroomStore";
+import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckOutPage() {
+  // ✅ hooks snachala
+  const ready = useRequireStaff();
+
   const [wristband, setWristband] = useState("");
-  const [msg, setMsg] = useState<string>("");
+  const [lastCheckedOut, setLastCheckedOut] = useState<string | null>(null);
 
   const items = useCloakroomStore((s) => s.items);
   const checkOut = useCloakroomStore((s) => s.checkOut);
-
-  const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
 
   const doCheckOut = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
 
-    const res = checkOut(code);
-
-    if (res.ok) setMsg(`Checked out: ${code}`);
-    else if (res.reason === "NOT_FOUND") setMsg("Not found");
-    else if (res.reason === "ALREADY_OUT") setMsg("Already checked out");
-    else setMsg("Error");
-
+    checkOut(code);
     setWristband("");
+    setLastCheckedOut(code);
   };
+
+  // ✅ tolko posle hooks
+  if (!ready) return null;
 
   return (
     <main
@@ -74,18 +74,22 @@ export default function CheckOutPage() {
         Confirm Check Out
       </button>
 
-      {msg && <div style={{ opacity: 0.8 }}>{msg}</div>}
+      {lastCheckedOut && (
+        <div style={{ marginTop: 6, fontSize: 14, opacity: 0.8 }}>
+          Checked out: {lastCheckedOut}
+        </div>
+      )}
 
-      <div style={{ marginTop: 20, width: 360 }}>
+      <div style={{ marginTop: 26, width: 360 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
           Checked In Items:
         </h2>
 
-        {inItems.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No checked-in items.</div>
+        {items.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {inItems.map((item) => (
+            {items.map((item) => (
               <li
                 key={item.code}
                 style={{
@@ -94,6 +98,7 @@ export default function CheckOutPage() {
                   fontSize: 16,
                   display: "flex",
                   justifyContent: "space-between",
+                  gap: 12,
                 }}
               >
                 <span>#{item.code}</span>
@@ -104,9 +109,11 @@ export default function CheckOutPage() {
         )}
       </div>
 
-      <Link href="/" style={{ textDecoration: "none", color: "#111", marginTop: 10 }}>
-        ← Back to Home
-      </Link>
+      <div style={{ marginTop: 18 }}>
+        <Link href="/" style={{ textDecoration: "none", color: "#111" }}>
+          ← Back to Home
+        </Link>
+      </div>
     </main>
   );
 }

@@ -5,8 +5,12 @@ import Link from "next/link";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
 import { QRCodeCanvas } from "qrcode.react";
+import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckInPage() {
+  // ✅ hooks dolzhny byt' vsegda vyzvany do lyubyh return
+  const ready = useRequireStaff();
+
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
@@ -38,6 +42,9 @@ export default function CheckInPage() {
     setLastCode(code);
     setShowBackup(true);
   };
+
+  // ✅ tol'ko posle vseh hooks
+  if (!ready) return null;
 
   return (
     <main
