@@ -8,11 +8,20 @@ import { useCloakroomStore } from "../../store/cloakroomStore";
 export default function BackupWristbandPage() {
   const router = useRouter();
 
-  const params = useParams<{ code: string }>();
-  const code = useMemo(() => decodeURIComponent(params.code || ""), [params.code]);
+  // ✅ bez generics — eto pravil'no dlya Next App Router
+  const params = useParams();
+
+  const code = useMemo(() => {
+    const raw = params?.code;
+    return typeof raw === "string" ? decodeURIComponent(raw) : "";
+  }, [params]);
 
   const items = useCloakroomStore((s) => s.items);
-  const item = useMemo(() => items.find((it) => it.code === code), [items, code]);
+
+  const item = useMemo(
+    () => items.find((it) => it.code === code),
+    [items, code]
+  );
 
   const status = item?.status ?? "NOT_FOUND";
 
@@ -40,40 +49,24 @@ export default function BackupWristbandPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Digital Wristband</div>
-            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>#{code}</div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <button
-              type="button"
-              onClick={() => router.replace("/")}
-              style={{
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "transparent",
-                color: "white",
-                borderRadius: 10,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontSize: 12,
-                opacity: 0.95,
-              }}
-            >
-              Home
-            </button>
-
-            <div
-              style={{
-                alignSelf: "flex-start",
-                padding: "6px 10px",
-                borderRadius: 999,
-                fontSize: 12,
-                border: "1px solid rgba(255,255,255,0.18)",
-                opacity: 0.9,
-              }}
-            >
-              Status: {status}
+            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>
+              #{code}
             </div>
           </div>
+
+          <button
+            onClick={() => router.push("/")}
+            style={{
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "transparent",
+              color: "white",
+              borderRadius: 8,
+              padding: "6px 10px",
+              cursor: "pointer",
+            }}
+          >
+            Home
+          </button>
         </div>
 
         <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
@@ -82,21 +75,13 @@ export default function BackupWristbandPage() {
               background: "white",
               borderRadius: 14,
               padding: 12,
-              border: "1px solid rgba(0,0,0,0.06)",
             }}
           >
             <QRCodeCanvas value={code} size={260} includeMargin />
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: 14,
-            fontSize: 13,
-            opacity: 0.85,
-            textAlign: "center",
-          }}
-        >
+        <div style={{ marginTop: 14, fontSize: 13, opacity: 0.85, textAlign: "center" }}>
           Show this QR to staff. They can scan it like a wristband.
         </div>
 
@@ -109,21 +94,9 @@ export default function BackupWristbandPage() {
               textAlign: "center",
             }}
           >
-            Note: this code is not in the current device session. If staff uses another
-            device, they must have the same event/session open.
+            Note: this code is not in the current device session.
           </div>
         )}
-
-        <div
-          style={{
-            marginTop: 14,
-            fontSize: 12,
-            opacity: 0.65,
-            textAlign: "center",
-          }}
-        >
-          Tip: Add to Home Screen to open it like an app.
-        </div>
       </div>
     </main>
   );
