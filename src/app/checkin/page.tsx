@@ -2,10 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
-import { QRCodeCanvas } from "qrcode.react";
 import { useRequireStaff } from "../utils/requireStaff";
+
+// ✅ ВАЖНО: грузим QR только на клиенте (лечит “не показывается QR”)
+const QRCodeCanvas = dynamic(
+  () => import("qrcode.react").then((m) => m.QRCodeCanvas),
+  { ssr: false }
+);
 
 export default function CheckInPage() {
   const ready = useRequireStaff();
@@ -19,6 +26,7 @@ export default function CheckInPage() {
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
+    // безопасно на клиенте
     setOrigin(window.location.origin);
   }, []);
 
@@ -26,13 +34,12 @@ export default function CheckInPage() {
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
   // ✅ показываем только активные (IN)
-  const inItems = useMemo(
-    () => items.filter((it) => it.status === "IN").sort((a, b) => b.updatedAt - a.updatedAt),
-    [items]
-  );
+  const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
 
+  // URL страницы backup
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
+    if (!origin) return `/b/${encodeURIComponent(lastCode)}`; // если origin ещё не успел
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
   }, [origin, lastCode]);
 
@@ -40,18 +47,15 @@ export default function CheckInPage() {
     const code = raw.trim();
     if (!code) return;
 
-    const res = checkIn(code);
-
-    // ✅ показываем backup только если реально зачекинили (а не дубль)
-    if (res.ok) {
-      setLastCode(code);
-      setShowBackup(true);
-    }
+    // store сам не даст продублировать один и тот же IN повторно
+    checkIn(code);
 
     setWristband("");
+    setLastCode(code);
+    setShowBackup(true);
   };
 
-  // ✅ важно: return только ПОСЛЕ хуков
+  // ✅ ВАЖНО: return null только ПОСЛЕ всех хуков
   if (!ready) return null;
 
   return (
@@ -121,13 +125,16 @@ export default function CheckInPage() {
         <Link href="/checkout" style={{ textDecoration: "none", color: "#111" }}>
           Go to Check Out →
         </Link>
+        <Link href="/history" style={{ textDecoration: "none", color: "#111" }}>
+          History →
+        </Link>
         <Link href="/" style={{ textDecoration: "none", color: "#111" }}>
           ← Back to Home
         </Link>
       </div>
 
-      <div style={{ marginTop: 30, width: 360 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
+      <div style={{ marginTop: 30, width: 420 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>
           Active (IN) Items:
         </h2>
 
@@ -149,7 +156,7 @@ export default function CheckInPage() {
               >
                 <span>#{item.code}</span>
                 <span style={{ opacity: 0.7, fontSize: 13 }}>
-                  {new Date(item.updatedAt).toLocaleTimeString()}
+                  {item.inAt ? new Date(item.inAt).toLocaleTimeString() : ""}
                 </span>
               </li>
             ))}
@@ -226,7 +233,11 @@ export default function CheckInPage() {
                     padding: 10,
                   }}
                 >
-                  <QRCodeCanvas value={backupUrl || lastCode} size={220} includeMargin />
+                  <QRCodeCanvas
+                    value={backupUrl || lastCode}
+                    size={220}
+                    includeMargin
+                  />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 220 }}>
@@ -252,6 +263,7 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
+                  {/* ✅ В ТОЙ ЖЕ ВКЛАДКЕ */}
                   <Link
                     href={`/b/${encodeURIComponent(lastCode)}`}
                     onClick={() => setShowBackup(false)}

@@ -1,158 +1,142 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export type CloakroomStatus = "IN" | "OUT";
-
-export type CloakroomEvent = {
-  type: CloakroomStatus; // IN / OUT
-  at: number;            // Date.now()
-  staff?: string;        // optional: staff name/id
-};
-
-export type CloakroomItem = {
+export type ActiveItem = {
   code: string;
-  status: CloakroomStatus;
-  createdAt: number;     // when first seen
-  updatedAt: number;     // last change
-  events: CloakroomEvent[];
+  status: "IN";
+  checkedInAt: number; // ms
+  staff?: string;
 };
 
-type CheckResult =
-  | { ok: true }
-  | { ok: false; reason: "NOT_FOUND" | "ALREADY_IN" | "ALREADY_OUT" };
+export type HistoryEvent = {
+  id: string;
+  code: string;
+  action: "IN" | "OUT";
+  at: number; // ms
+  staff?: string;
+};
 
 type CloakroomState = {
-  items: CloakroomItem[];
-
-  // derived helpers (optional convenience)
-  getActive: () => CloakroomItem[];
-  getHistory: () => CloakroomItem[];
-
-  checkIn: (code: string) => CheckResult;
-  checkOut: (code: string) => CheckResult;
-
-  // optional: clean old OUT items from history (does NOT touch active)
-  clearHistoryOlderThan: (ms: number) => void;
+  items: ActiveItem[];        // только активные (IN)
+  history: HistoryEvent[];    // лог событий (90 дней)
+  checkIn: (code: string) => void;
+  checkOut: (code: string) => void;
+  clearHistory: () => void;
+  cleanupHistory: () => void;
 };
+
+const HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 дней
+const MAX_HISTORY_EVENTS = 5000; // защита от бесконечного роста
 
 function now() {
   return Date.now();
 }
 
-function readStaffLabel(): string | undefined {
-  // если захочешь: на login странице сохрани localStorage.setItem("staff_name", "Anfisa")
+function getStaffName(): string {
   try {
-    const s = localStorage.getItem("staff_name");
-    return s && s.trim() ? s.trim() : undefined;
+    // если позже добавим имя — будем брать отсюда
+    const n = localStorage.getItem("staff_name");
+    return (n && n.trim()) || "staff";
   } catch {
-    return undefined;
+    return "staff";
   }
 }
 
-export const useCloakroomStore = create<CloakroomState>((set, get) => ({
-  items: [],
+function makeId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
-  getActive: () => get().items.filter((it) => it.status === "IN"),
-  getHistory: () => get().items.filter((it) => it.status === "OUT"),
+function cleanup(events: HistoryEvent[]) {
+  const minTs = now() - HISTORY_RETENTION_MS;
+  const filtered = events.filter((e) => e.at >= minTs);
 
-  checkIn: (raw: string) => {
-    const code = raw.trim();
-    if (!code) return { ok: false, reason: "NOT_FOUND" };
+  // оставляем самые свежие MAX_HISTORY_EVENTS
+  filtered.sort((a, b) => b.at - a.at);
+  return filtered.slice(0, MAX_HISTORY_EVENTS);
+}
 
-    const staff = readStaffLabel();
-    const t = now();
+export const useCloakroomStore = create<CloakroomState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      history: [],
 
-    let result: CheckResult = { ok: true };
+      cleanupHistory: () => {
+        set((state) => ({ history: cleanup(state.history) }));
+      },
 
-    set((state) => {
-      const idx = state.items.findIndex((it) => it.code === code);
+      clearHistory: () => set({ history: [] }),
 
-      // новый item
-      if (idx === -1) {
-        const item: CloakroomItem = {
-          code,
-          status: "IN",
-          createdAt: t,
-          updatedAt: t,
-          events: [{ type: "IN", at: t, staff }],
-        };
-        return { items: [item, ...state.items] };
-      }
+      checkIn: (rawCode: string) => {
+        const code = rawCode.trim();
+        if (!code) return;
 
-      const item = state.items[idx];
+        const staff = getStaffName();
 
-      // уже IN -> не дублируем
-      if (item.status === "IN") {
-        result = { ok: false, reason: "ALREADY_IN" };
-        return state;
-      }
+        set((state) => {
+          // если уже IN — не дублируем
+          if (state.items.some((it) => it.code === code)) {
+            return { history: cleanup(state.history) };
+          }
 
-      // был OUT -> снова IN (это нормально, пишем новый event)
-      const updated: CloakroomItem = {
-        ...item,
-        status: "IN",
-        updatedAt: t,
-        events: [...item.events, { type: "IN", at: t, staff }],
-      };
+          const event: HistoryEvent = {
+            id: makeId(),
+            code,
+            action: "IN",
+            at: now(),
+            staff,
+          };
 
-      const items = state.items.slice();
-      items[idx] = updated;
+          const item: ActiveItem = {
+            code,
+            status: "IN",
+            checkedInAt: event.at,
+            staff,
+          };
 
-      // поднимем вверх список (удобнее)
-      items.sort((a, b) => b.updatedAt - a.updatedAt);
+          return {
+            items: [item, ...state.items],
+            history: cleanup([event, ...state.history]),
+          };
+        });
+      },
 
-      return { items };
-    });
+      checkOut: (rawCode: string) => {
+        const code = rawCode.trim();
+        if (!code) return;
 
-    return result;
-  },
+        const staff = getStaffName();
 
-  checkOut: (raw: string) => {
-    const code = raw.trim();
-    if (!code) return { ok: false, reason: "NOT_FOUND" };
+        set((state) => {
+          const exists = state.items.some((it) => it.code === code);
 
-    const staff = readStaffLabel();
-    const t = now();
+          // если нет такого IN — просто чистим history (на всякий)
+          if (!exists) {
+            return { history: cleanup(state.history) };
+          }
 
-    let result: CheckResult = { ok: true };
+          const event: HistoryEvent = {
+            id: makeId(),
+            code,
+            action: "OUT",
+            at: now(),
+            staff,
+          };
 
-    set((state) => {
-      const idx = state.items.findIndex((it) => it.code === code);
-      if (idx === -1) {
-        result = { ok: false, reason: "NOT_FOUND" };
-        return state;
-      }
-
-      const item = state.items[idx];
-
-      // уже OUT -> второй раз не снимаем
-      if (item.status === "OUT") {
-        result = { ok: false, reason: "ALREADY_OUT" };
-        return state;
-      }
-
-      const updated: CloakroomItem = {
-        ...item,
-        status: "OUT",
-        updatedAt: t,
-        events: [...item.events, { type: "OUT", at: t, staff }],
-      };
-
-      const items = state.items.slice();
-      items[idx] = updated;
-
-      // сортировка по последнему действию
-      items.sort((a, b) => b.updatedAt - a.updatedAt);
-
-      return { items };
-    });
-
-    return result;
-  },
-
-  clearHistoryOlderThan: (ms: number) => {
-    const cutoff = now() - ms;
-    set((state) => ({
-      items: state.items.filter((it) => !(it.status === "OUT" && it.updatedAt < cutoff)),
-    }));
-  },
-}));
+          return {
+            // удаляем из активных IN
+            items: state.items.filter((it) => it.code !== code),
+            history: cleanup([event, ...state.history]),
+          };
+        });
+      },
+    }),
+    {
+      name: "cloakroom-store-v1",
+      partialize: (s) => ({
+        items: s.items,
+        history: s.history,
+      }),
+    }
+  )
+);
