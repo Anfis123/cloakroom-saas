@@ -2,21 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
+import { QRCodeCanvas } from "qrcode.react";
 import { useRequireStaff } from "../utils/requireStaff";
 
-// ✅ ВАЖНО: грузим QR только на клиенте (лечит “не показывается QR”)
-const QRCodeCanvas = dynamic(
-  () => import("qrcode.react").then((m) => m.QRCodeCanvas),
-  { ssr: false }
-);
-
 export default function CheckInPage() {
+  // 1) staff protection (hook)
   const ready = useRequireStaff();
 
+  // 2) остальные hooks (ВАЖНО: до return null)
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
@@ -26,20 +21,17 @@ export default function CheckInPage() {
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    // безопасно на клиенте
     setOrigin(window.location.origin);
   }, []);
 
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
-  // ✅ показываем только активные (IN)
+  // показываем только активные (IN)
   const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
 
-  // URL страницы backup
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
-    if (!origin) return `/b/${encodeURIComponent(lastCode)}`; // если origin ещё не успел
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
   }, [origin, lastCode]);
 
@@ -47,7 +39,7 @@ export default function CheckInPage() {
     const code = raw.trim();
     if (!code) return;
 
-    // store сам не даст продублировать один и тот же IN повторно
+    // store сам предотвращает дубликат (как у тебя сделано)
     checkIn(code);
 
     setWristband("");
@@ -55,7 +47,7 @@ export default function CheckInPage() {
     setShowBackup(true);
   };
 
-  // ✅ ВАЖНО: return null только ПОСЛЕ всех хуков
+  // ✅ return null ТОЛЬКО после всех hooks
   if (!ready) return null;
 
   return (
@@ -155,8 +147,13 @@ export default function CheckInPage() {
                 }}
               >
                 <span>#{item.code}</span>
+
+                {/* ✅ ВОТ ТУТ ГЛАВНОЕ ИСПРАВЛЕНИЕ ДЛЯ VERCEL:
+                    item.checkedInAt вместо item.inAt */}
                 <span style={{ opacity: 0.7, fontSize: 13 }}>
-                  {item.inAt ? new Date(item.inAt).toLocaleTimeString() : ""}
+                  {item.checkedInAt
+                    ? new Date(item.checkedInAt).toLocaleTimeString()
+                    : ""}
                 </span>
               </li>
             ))}
@@ -263,7 +260,6 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
-                  {/* ✅ В ТОЙ ЖЕ ВКЛАДКЕ */}
                   <Link
                     href={`/b/${encodeURIComponent(lastCode)}`}
                     onClick={() => setShowBackup(false)}
