@@ -2,14 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function CheckInPage() {
-  const router = useRouter();
-
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
@@ -25,11 +22,6 @@ export default function CheckInPage() {
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
-  const activeItems = useMemo(
-    () => items.filter((it) => it.status === "IN"),
-    [items]
-  );
-
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
@@ -39,17 +31,12 @@ export default function CheckInPage() {
     const code = raw.trim();
     if (!code) return;
 
+    // ✅ store sam predotvraschaet dublikat
     checkIn(code);
-    setWristband("");
 
+    setWristband("");
     setLastCode(code);
     setShowBackup(true);
-  };
-
-  const openBackupHere = () => {
-    if (!lastCode) return;
-    setShowBackup(false); // zakryvaem modalku
-    router.push(`/b/${encodeURIComponent(lastCode)}`); // otkryvaem V ETOM ZHE TABE
   };
 
   return (
@@ -129,11 +116,11 @@ export default function CheckInPage() {
           Checked In Items:
         </h2>
 
-        {activeItems.length === 0 ? (
+        {items.length === 0 ? (
           <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {activeItems.map((item) => (
+            {items.map((item) => (
               <li
                 key={item.code}
                 style={{
@@ -248,24 +235,23 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
-                  {/* VAZHNO: teper bez novoj vkladki */}
-                  <button
-                    type="button"
-                    onClick={openBackupHere}
+                  {/* ✅ V TOI ZHE VKLADKE */}
+                  <Link
+                    href={`/b/${encodeURIComponent(lastCode)}`}
+                    onClick={() => setShowBackup(false)}
                     style={{
                       display: "inline-block",
                       marginTop: 10,
+                      textDecoration: "none",
                       border: "1px solid #111",
                       borderRadius: 10,
                       padding: "10px 12px",
-                      background: "white",
                       color: "#111",
                       fontSize: 14,
-                      cursor: "pointer",
                     }}
                   >
                     Open backup page →
-                  </button>
+                  </Link>
 
                   <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
                     Tip: “Add to Home Screen” on phone.

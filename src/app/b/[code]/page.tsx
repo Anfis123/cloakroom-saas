@@ -7,21 +7,15 @@ import { useCloakroomStore } from "../../store/cloakroomStore";
 
 export default function BackupWristbandPage() {
   const router = useRouter();
-
-  // ✅ bez generics — eto pravil'no dlya Next App Router
   const params = useParams();
 
   const code = useMemo(() => {
-    const raw = params?.code;
+    const raw = (params as any)?.code;
     return typeof raw === "string" ? decodeURIComponent(raw) : "";
   }, [params]);
 
   const items = useCloakroomStore((s) => s.items);
-
-  const item = useMemo(
-    () => items.find((it) => it.code === code),
-    [items, code]
-  );
+  const item = useMemo(() => items.find((it) => it.code === code), [items, code]);
 
   const status = item?.status ?? "NOT_FOUND";
 
@@ -49,24 +43,39 @@ export default function BackupWristbandPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Digital Wristband</div>
-            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>
-              #{code}
-            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>#{code}</div>
           </div>
 
           <button
-            onClick={() => router.push("/")}
+            type="button"
+            onClick={() => router.replace("/")}
             style={{
+              alignSelf: "flex-start",
+              padding: "6px 10px",
+              borderRadius: 10,
+              fontSize: 12,
               border: "1px solid rgba(255,255,255,0.18)",
               background: "transparent",
               color: "white",
-              borderRadius: 8,
-              padding: "6px 10px",
               cursor: "pointer",
+              opacity: 0.95,
             }}
           >
             Home
           </button>
+        </div>
+
+        <div
+          style={{
+            marginTop: 10,
+            fontSize: 12,
+            opacity: 0.85,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>Status: {status}</span>
+          <span style={{ opacity: 0.7 }}>Keep this open / Add to Home Screen</span>
         </div>
 
         <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
@@ -75,6 +84,7 @@ export default function BackupWristbandPage() {
               background: "white",
               borderRadius: 14,
               padding: 12,
+              border: "1px solid rgba(0,0,0,0.06)",
             }}
           >
             <QRCodeCanvas value={code} size={260} includeMargin />

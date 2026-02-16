@@ -1,72 +1,88 @@
-"use client";
-
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type ItemStatus = "IN" | "OUT";
 
 export type CloakroomItem = {
   code: string;
   status: ItemStatus;
-  updatedAt: number;
+  checkedInAt: number; // timestamp
+  checkedOutAt?: number; // timestamp
 };
 
-type State = {
+type CloakroomState = {
   items: CloakroomItem[];
-  checkIn: (code: string) => void;
-  checkOut: (code: string) => void;
+
+  checkIn: (code: string) => { ok: boolean; reason?: string };
+  checkOut: (code: string) => { ok: boolean; reason?: string };
   resetAll: () => void;
 };
 
-export const useCloakroomStore = create<State>((set, get) => ({
-  items: [],
+export const useCloakroomStore = create<CloakroomState>()(
+  persist(
+    (set, get) => ({
+      items: [],
 
-  // checkIn: ne dobavljaem dublikaty, a obnovljaem / vozvrashaem v IN
-  checkIn: (raw) => {
-    const code = raw.trim();
-    if (!code) return;
+      checkIn: (rawCode) => {
+        const code = rawCode.trim();
+        if (!code) return { ok: false, reason: "EMPTY_CODE" };
 
-    const now = Date.now();
-    const items = get().items;
+        const items = get().items;
+        const existing = items.find((it) => it.code === code);
 
-    const existing = items.find((it) => it.code === code);
+        // ✅ esli uzhe IN — ne dobavlyaem dublikat
+        if (existing && existing.status === "IN") {
+          return { ok: true, reason: "ALREADY_IN" };
+        }
 
-    // esli uzhe IN — nichego ne delaem (net dublja)
-    if (existing && existing.status === "IN") return;
+        // ✅ esli byl OUT — vozvraschaem v IN
+        if (existing && existing.status === "OUT") {
+          set({
+            items: items.map((it) =>
+              it.code === code
+                ? { ...it, status: "IN", checkedInAt: Date.now(), checkedOutAt: undefined }
+                : it
+            ),
+          });
+          return { ok: true, reason: "REOPENED" };
+        }
 
-    // esli byl OUT — vozvrashaem v IN
-    if (existing) {
-      set({
-        items: items.map((it) =>
-          it.code === code ? { ...it, status: "IN", updatedAt: now } : it
-        ),
-      });
-      return;
-    }
+        // ✅ esli netu — dobavlyaem novyj
+        set({
+          items: [
+            ...items,
+            {
+              code,
+              status: "IN",
+              checkedInAt: Date.now(),
+            },
+          ],
+        });
 
-    // esli netu — dobavljaem novyj
-    set({
-      items: [{ code, status: "IN", updatedAt: now }, ...items],
-    });
-  },
+        return { ok: true };
+      },
 
-  // checkOut: tolko esli etot kod sejchas IN
-  checkOut: (raw) => {
-    const code = raw.trim();
-    if (!code) return;
+      checkOut: (rawCode) => {
+        const code = rawCode.trim();
+        if (!code) return { ok: false, reason: "EMPTY_CODE" };
 
-    const now = Date.now();
-    const items = get().items;
+        const items = get().items;
+        const existing = items.find((it) => it.code === code);
 
-    const existing = items.find((it) => it.code === code);
-    if (!existing) return;
-    if (existing.status !== "IN") return;
+        if (!existing) return { ok: false, reason: "NOT_FOUND" };
+        if (existing.status === "OUT") return { ok: false, reason: "ALREADY_OUT" };
 
-    set({
-      items: items.map((it) =>
-        it.code === code ? { ...it, status: "OUT", updatedAt: now } : it
-      ),
-    });
-  },
+        set({
+          items: items.map((it) =>
+            it.code === code ? { ...it, status: "OUT", checkedOutAt: Date.now() } : it
+          ),
+        });
 
-  resetAll: () => set({ items: [] }),
-}));
+        return { ok: true };
+      },
+
+      resetAll: () => set({ items: [] }),
+    }),
+    { name: "cloakroom-store-v1" }
+  )
+);
