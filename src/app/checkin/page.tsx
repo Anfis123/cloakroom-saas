@@ -8,10 +8,9 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckInPage() {
-  // 1) staff protection (hook)
+  // ✅ hooks dolzhny byt' vsegda vyzvany do lyubyh return
   const ready = useRequireStaff();
 
-  // 2) остальные hooks (ВАЖНО: до return null)
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
@@ -27,9 +26,6 @@ export default function CheckInPage() {
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
-  // показываем только активные (IN)
-  const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
-
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
@@ -39,7 +35,7 @@ export default function CheckInPage() {
     const code = raw.trim();
     if (!code) return;
 
-    // store сам предотвращает дубликат (как у тебя сделано)
+    // ✅ store sam predotvraschaet dublikat
     checkIn(code);
 
     setWristband("");
@@ -47,7 +43,7 @@ export default function CheckInPage() {
     setShowBackup(true);
   };
 
-  // ✅ return null ТОЛЬКО после всех hooks
+  // ✅ tol'ko posle vseh hooks
   if (!ready) return null;
 
   return (
@@ -117,24 +113,21 @@ export default function CheckInPage() {
         <Link href="/checkout" style={{ textDecoration: "none", color: "#111" }}>
           Go to Check Out →
         </Link>
-        <Link href="/history" style={{ textDecoration: "none", color: "#111" }}>
-          History →
-        </Link>
         <Link href="/" style={{ textDecoration: "none", color: "#111" }}>
           ← Back to Home
         </Link>
       </div>
 
-      <div style={{ marginTop: 30, width: 420 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>
-          Active (IN) Items:
+      <div style={{ marginTop: 30, width: 360 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
+          Checked In Items:
         </h2>
 
-        {inItems.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No active items.</div>
+        {items.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {inItems.map((item) => (
+            {items.map((item) => (
               <li
                 key={item.code}
                 style={{
@@ -147,14 +140,7 @@ export default function CheckInPage() {
                 }}
               >
                 <span>#{item.code}</span>
-
-                {/* ✅ ВОТ ТУТ ГЛАВНОЕ ИСПРАВЛЕНИЕ ДЛЯ VERCEL:
-                    item.checkedInAt вместо item.inAt */}
-                <span style={{ opacity: 0.7, fontSize: 13 }}>
-                  {item.checkedInAt
-                    ? new Date(item.checkedInAt).toLocaleTimeString()
-                    : ""}
-                </span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
               </li>
             ))}
           </ul>
@@ -230,11 +216,7 @@ export default function CheckInPage() {
                     padding: 10,
                   }}
                 >
-                  <QRCodeCanvas
-                    value={backupUrl || lastCode}
-                    size={220}
-                    includeMargin
-                  />
+                  <QRCodeCanvas value={backupUrl || lastCode} size={220} includeMargin />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 220 }}>
@@ -260,6 +242,7 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
+                  {/* ✅ V TOI ZHE VKLADKE */}
                   <Link
                     href={`/b/${encodeURIComponent(lastCode)}`}
                     onClick={() => setShowBackup(false)}

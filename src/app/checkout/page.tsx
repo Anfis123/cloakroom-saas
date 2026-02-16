@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useCloakroomStore } from "../store/cloakroomStore";
 import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckOutPage() {
+  // ✅ hooks snachala
   const ready = useRequireStaff();
 
   const [wristband, setWristband] = useState("");
@@ -14,25 +15,16 @@ export default function CheckOutPage() {
   const items = useCloakroomStore((s) => s.items);
   const checkOut = useCloakroomStore((s) => s.checkOut);
 
-  // ✅ показываем только активные (IN)
-  const inItems = useMemo(
-    () => items.filter((it) => it.status === "IN").sort((a, b) => b.updatedAt - a.updatedAt),
-    [items]
-  );
-
   const doCheckOut = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
 
-    const res = checkOut(code);
-
-    // показываем подтверждение только если реально сняли (а не "not found"/"already out")
-    if (res?.ok) setLastCheckedOut(code);
-
+    checkOut(code);
     setWristband("");
+    setLastCheckedOut(code);
   };
 
-  // ✅ важно: return только ПОСЛЕ хуков
+  // ✅ tolko posle hooks
   if (!ready) return null;
 
   return (
@@ -90,14 +82,14 @@ export default function CheckOutPage() {
 
       <div style={{ marginTop: 26, width: 360 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-          Active (IN) Items:
+          Checked In Items:
         </h2>
 
-        {inItems.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No active items.</div>
+        {items.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {inItems.map((item) => (
+            {items.map((item) => (
               <li
                 key={item.code}
                 style={{
@@ -110,9 +102,7 @@ export default function CheckOutPage() {
                 }}
               >
                 <span>#{item.code}</span>
-                <span style={{ opacity: 0.7, fontSize: 13 }}>
-                  {new Date(item.updatedAt).toLocaleTimeString()}
-                </span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
               </li>
             ))}
           </ul>
