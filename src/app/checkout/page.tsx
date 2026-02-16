@@ -6,30 +6,67 @@ import { useCloakroomStore } from "../store/cloakroomStore";
 
 export default function CheckOutPage() {
   const items = useCloakroomStore((s) => s.items);
-  const checkOut = useCloakroomStore((s) => s.checkOut);
+  const openItem = useCloakroomStore((s) => s.openItem);
+  const closeItem = useCloakroomStore((s) => s.closeItem);
 
   const [wristband, setWristband] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
   const normalizedInput = useMemo(() => wristband.trim(), [wristband]);
 
-  const handleCheckout = () => {
+  const findItem = (code: string) => items.find((it) => it.code === code);
+
+  const handleOpen = () => {
     const code = normalizedInput;
     if (!code) {
       setMessage("Please scan a wristband first.");
       return;
     }
 
-    const exists = items.includes(code);
-    if (!exists) {
+    const item = findItem(code);
+    if (!item) {
       setMessage(`Not found: ${code}`);
       return;
     }
 
-    checkOut(code); // удалит ОДНУ штуку (если store сделан правильно ниже)
+    if (item.status === "CLOSED") {
+      setMessage(`Already CLOSED: ${code}`);
+      return;
+    }
+
+    openItem(code);
     setWristband("");
-    setMessage(`Checked out: ${code}`);
+    setMessage(`Locker opened: ${code}`);
   };
+
+  const handleFinalReturn = () => {
+    const code = normalizedInput;
+    if (!code) {
+      setMessage("Please scan a wristband first.");
+      return;
+    }
+
+    const item = findItem(code);
+    if (!item) {
+      setMessage(`Not found: ${code}`);
+      return;
+    }
+
+    if (item.status === "CLOSED") {
+      setMessage(`Already CLOSED: ${code}`);
+      return;
+    }
+
+    closeItem(code);
+    setWristband("");
+    setMessage(`Final return (CLOSED): ${code}`);
+  };
+
+  // pokazivaem tolko aktivnye (ne CLOSED)
+  const activeItems = useMemo(
+    () => items.filter((it) => it.status !== "CLOSED"),
+    [items]
+  );
 
   return (
     <main
@@ -42,17 +79,14 @@ export default function CheckOutPage() {
         gap: "16px",
       }}
     >
-      <h1 style={{ fontSize: "36px", fontWeight: 700 }}>Check Out Item</h1>
+      <h1 style={{ fontSize: 36, fontWeight: 700 }}>Check Out / Lockers</h1>
 
       <input
         placeholder="Scan wristband..."
         value={wristband}
-        onChange={(e) => {
-          setWristband(e.target.value);
-          if (message) setMessage(null); // чтобы сообщение исчезало при новом вводе
-        }}
+        onChange={(e) => setWristband(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") handleCheckout();
+          if (e.key === "Enter") handleFinalReturn();
         }}
         style={{
           width: "280px",
@@ -65,7 +99,25 @@ export default function CheckOutPage() {
       />
 
       <button
-        onClick={handleCheckout}
+        type="button"
+        onClick={handleOpen}
+        style={{
+          width: "300px",
+          padding: "12px 20px",
+          fontSize: "16px",
+          borderRadius: "10px",
+          background: "white",
+          color: "#111",
+          border: "1px solid #111",
+          cursor: "pointer",
+        }}
+      >
+        Open Locker (re-entry)
+      </button>
+
+      <button
+        type="button"
+        onClick={handleFinalReturn}
         style={{
           width: "300px",
           padding: "12px 20px",
@@ -77,34 +129,40 @@ export default function CheckOutPage() {
           cursor: "pointer",
         }}
       >
-        Confirm Check Out
+        Final Return (Close)
       </button>
 
       {message && (
-        <div style={{ marginTop: "8px", fontSize: "14px", opacity: 0.85 }}>
+        <div style={{ marginTop: 8, fontSize: 14, opacity: 0.85 }}>
           {message}
         </div>
       )}
 
-      <div style={{ marginTop: "24px", width: "320px" }}>
-        <h2 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-          Checked In Items:
+      <div style={{ marginTop: 24, width: 360 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
+          Active Items (not closed):
         </h2>
 
-        {items.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No items yet.</div>
+        {activeItems.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No active items.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((code, idx) => (
+            {activeItems.map((item) => (
               <li
-                key={`${code}-${idx}`} // ✅ теперь не ломается при повторах
+                key={item.code}
                 style={{
                   padding: "10px 0",
                   borderBottom: "1px solid #eee",
-                  fontSize: "16px",
+                  fontSize: 16,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
                 }}
               >
-                #{code}
+                <span>#{item.code}</span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>
+                  {item.status}
+                </span>
               </li>
             ))}
           </ul>
@@ -114,7 +172,7 @@ export default function CheckOutPage() {
       <Link
         href="/"
         style={{
-          marginTop: "18px",
+          marginTop: 18,
           textDecoration: "none",
           color: "#111",
           opacity: 0.8,

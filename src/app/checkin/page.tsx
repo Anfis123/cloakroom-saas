@@ -2,30 +2,36 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function CheckInPage() {
+  const router = useRouter();
+
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
-  // ✅ backup modal
+  // backup modal
   const [lastCode, setLastCode] = useState<string | null>(null);
   const [showBackup, setShowBackup] = useState(false);
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    // чтобы QR в модалке был полноценной ссылкой (работает и на Vercel)
     setOrigin(window.location.origin);
   }, []);
 
   const items = useCloakroomStore((s) => s.items);
   const checkIn = useCloakroomStore((s) => s.checkIn);
 
+  const activeItems = useMemo(
+    () => items.filter((it) => it.status === "IN"),
+    [items]
+  );
+
   const backupUrl = useMemo(() => {
     if (!lastCode) return "";
-    // ссылка на страницу дубля
     return `${origin}/b/${encodeURIComponent(lastCode)}`;
   }, [origin, lastCode]);
 
@@ -36,9 +42,14 @@ export default function CheckInPage() {
     checkIn(code);
     setWristband("");
 
-    // ✅ после чек-ина показываем backup QR
     setLastCode(code);
     setShowBackup(true);
+  };
+
+  const openBackupHere = () => {
+    if (!lastCode) return;
+    setShowBackup(false); // zakryvaem modalku
+    router.push(`/b/${encodeURIComponent(lastCode)}`); // otkryvaem V ETOM ZHE TABE
   };
 
   return (
@@ -113,25 +124,29 @@ export default function CheckInPage() {
         </Link>
       </div>
 
-      <div style={{ marginTop: 30, width: 320 }}>
+      <div style={{ marginTop: 30, width: 360 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
           Checked In Items:
         </h2>
 
-        {items.length === 0 ? (
+        {activeItems.length === 0 ? (
           <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((code, i) => (
+            {activeItems.map((item) => (
               <li
-                key={`${code}-${i}`}
+                key={item.code}
                 style={{
                   padding: "10px 0",
                   borderBottom: "1px solid #eee",
                   fontSize: 16,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
                 }}
               >
-                #{code}
+                <span>#{item.code}</span>
+                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
               </li>
             ))}
           </ul>
@@ -142,7 +157,6 @@ export default function CheckInPage() {
       {showScanner && (
         <QRScanner
           onResult={(text) => {
-            // ✅ сразу чек-ин после скана
             doCheckIn(text);
             setShowScanner(false);
           }}
@@ -150,7 +164,7 @@ export default function CheckInPage() {
         />
       )}
 
-      {/* ✅ BACKUP QR MODAL */}
+      {/* BACKUP QR MODAL */}
       {showBackup && lastCode && (
         <div
           style={{
@@ -234,23 +248,24 @@ export default function CheckInPage() {
                     {backupUrl}
                   </div>
 
-                  <a
-                    href={`/b/${encodeURIComponent(lastCode)}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  {/* VAZHNO: teper bez novoj vkladki */}
+                  <button
+                    type="button"
+                    onClick={openBackupHere}
                     style={{
                       display: "inline-block",
                       marginTop: 10,
-                      textDecoration: "none",
                       border: "1px solid #111",
                       borderRadius: 10,
                       padding: "10px 12px",
+                      background: "white",
                       color: "#111",
                       fontSize: 14,
+                      cursor: "pointer",
                     }}
                   >
                     Open backup page →
-                  </a>
+                  </button>
 
                   <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
                     Tip: “Add to Home Screen” on phone.
