@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCloakroomStore } from "../store/cloakroomStore";
 import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckOutPage() {
-  // ✅ hooks snachala
   const ready = useRequireStaff();
 
   const [wristband, setWristband] = useState("");
@@ -14,6 +13,11 @@ export default function CheckOutPage() {
 
   const items = useCloakroomStore((s) => s.items);
   const checkOut = useCloakroomStore((s) => s.checkOut);
+
+  const inItems = useMemo(() => items.filter((it) => it.status === "IN"), [items]);
+
+  // ✅ tol'ko posle vseh hooks
+  if (!ready) return null;
 
   const doCheckOut = (raw: string) => {
     const code = raw.trim();
@@ -23,9 +27,6 @@ export default function CheckOutPage() {
     setWristband("");
     setLastCheckedOut(code);
   };
-
-  // ✅ tolko posle hooks
-  if (!ready) return null;
 
   return (
     <main
@@ -85,11 +86,11 @@ export default function CheckOutPage() {
           Checked In Items:
         </h2>
 
-        {items.length === 0 ? (
+        {inItems.length === 0 ? (
           <div style={{ opacity: 0.7 }}>No items yet.</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((item) => (
+            {inItems.map((item) => (
               <li
                 key={item.code}
                 style={{
