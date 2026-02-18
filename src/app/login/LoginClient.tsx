@@ -39,20 +39,32 @@ export default function LoginClient() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 16,
+        padding: 22,
+        color: "white",
+        background:
+          "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.35), rgba(0,0,0,0.95))",
       }}
     >
       <form
         onSubmit={submit}
         style={{
           width: "min(420px, 100%)",
-          border: "1px solid #eee",
-          borderRadius: 14,
-          padding: 16,
-          background: "white",
+          borderRadius: 16,
+          padding: 18,
+          background: "rgba(0,0,0,0.75)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 16px 50px rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
         }}
       >
-        <h1 style={{ fontSize: 24, margin: 0, fontWeight: 800 }}>Staff Login</h1>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <h1 style={{ fontSize: 26, margin: 0, fontWeight: 900 }}>
+            Staff Login
+          </h1>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>
+            Enter PIN to access staff pages
+          </div>
+        </div>
 
         <input
           value={pin}
@@ -61,34 +73,53 @@ export default function LoginClient() {
           inputMode="numeric"
           autoFocus
           style={{
-            marginTop: 12,
+            marginTop: 14,
             width: "100%",
             padding: 12,
-            borderRadius: 10,
-            border: "1px solid #ccc",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.14)",
             outline: "none",
             fontSize: 16,
+            background: "rgba(255,255,255,0.06)",
+            color: "white",
           }}
         />
 
-        {err && <div style={{ marginTop: 10, color: "crimson" }}>{err}</div>}
+        {err && (
+          <div
+            style={{
+              marginTop: 10,
+              color: "#ff6b6b",
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            {err}
+          </div>
+        )}
 
         <button
           type="submit"
           style={{
-            marginTop: 12,
+            marginTop: 14,
             width: "100%",
             padding: "12px 14px",
-            borderRadius: 10,
-            border: "none",
-            background: "black",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(0,0,0,0.85)",
             color: "white",
             cursor: "pointer",
             fontSize: 16,
+            fontWeight: 700,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
           }}
         >
           Continue
         </button>
+
+        <div style={{ marginTop: 12, fontSize: 12, opacity: 0.65 }}>
+          Tip: session expires automatically (idle + hidden lock).
+        </div>
       </form>
     </main>
   );

@@ -47,228 +47,185 @@ export default function CheckInPage() {
   if (!ready) return null;
 
   return (
-    <main
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        gap: 16,
-      }}
-    >
-      <h1 style={{ fontSize: 36, fontWeight: 700 }}>Check In Item</h1>
+    <div className="container">
+      <main className="card" style={{ width: "min(560px, 100%)" }}>
+        <h1 className="h1">Check In Item</h1>
+        <div className="sub">Scan wristband QR, then confirm check-in.</div>
 
-      <input
-        placeholder="Scan wristband..."
-        value={wristband}
-        onChange={(e) => setWristband(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") doCheckIn(wristband);
-        }}
-        style={{
-          width: 280,
-          padding: 12,
-          fontSize: 16,
-          borderRadius: 8,
-          border: "1px solid #ccc",
-          outline: "none",
-        }}
-      />
+        <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+          <input
+            className="input"
+            placeholder="Scan wristband..."
+            value={wristband}
+            onChange={(e) => setWristband(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") doCheckIn(wristband);
+            }}
+          />
 
-      <button
-        type="button"
-        onClick={() => setShowScanner(true)}
-        style={{
-          width: 300,
-          padding: "10px 14px",
-          fontSize: 14,
-          borderRadius: 10,
-          background: "white",
-          border: "1px solid #111",
-          cursor: "pointer",
-        }}
-      >
-        Open Camera Scanner
-      </button>
+          <button
+            type="button"
+            onClick={() => setShowScanner(true)}
+            className="btnSecondary"
+          >
+            Open Camera Scanner
+          </button>
 
-      <button
-        type="button"
-        onClick={() => doCheckIn(wristband)}
-        style={{
-          width: 300,
-          padding: "12px 20px",
-          fontSize: 16,
-          borderRadius: 10,
-          background: "black",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        Confirm Check In
-      </button>
+          <button
+            type="button"
+            onClick={() => doCheckIn(wristband)}
+            className="btn"
+          >
+            Confirm Check In
+          </button>
 
-      <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-        <Link href="/checkout" style={{ textDecoration: "none", color: "#111" }}>
-          Go to Check Out →
-        </Link>
-        <Link href="/" style={{ textDecoration: "none", color: "#111" }}>
-          ← Back to Home
-        </Link>
-      </div>
+          <div className="row" style={{ marginTop: 6 }}>
+            <Link href="/checkout" className="btnSecondary" style={{ textAlign: "center" }}>
+              Go to Check Out →
+            </Link>
+            <Link href="/" className="btnSecondary" style={{ textAlign: "center" }}>
+              ← Back to Home
+            </Link>
+          </div>
+        </div>
 
-      <div style={{ marginTop: 30, width: 360 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>
-          Checked In Items:
-        </h2>
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Checked In Items</div>
+            <div className="badge">{items.length} active</div>
+          </div>
 
-        {items.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No items yet.</div>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((item) => (
-              <li
-                key={item.code}
-                style={{
-                  padding: "10px 0",
-                  borderBottom: "1px solid #eee",
-                  fontSize: 16,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <span>#{item.code}</span>
-                <span style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</span>
-              </li>
-            ))}
-          </ul>
+          {items.length === 0 ? (
+            <div style={{ marginTop: 10, opacity: 0.7 }}>No items yet.</div>
+          ) : (
+            <div className="list">
+              {items.map((item) => (
+                <div key={item.code} className="listItem">
+                  <div style={{ fontWeight: 900 }}>#{item.code}</div>
+                  <div style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* QR SCANNER MODAL */}
+        {showScanner && (
+          <QRScanner
+            onResult={(text) => {
+              doCheckIn(text);
+              setShowScanner(false);
+            }}
+            onClose={() => setShowScanner(false)}
+          />
         )}
-      </div>
 
-      {/* QR SCANNER MODAL */}
-      {showScanner && (
-        <QRScanner
-          onResult={(text) => {
-            doCheckIn(text);
-            setShowScanner(false);
-          }}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
-
-      {/* BACKUP QR MODAL */}
-      {showBackup && lastCode && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 10000,
-          }}
-          onClick={() => setShowBackup(false)}
-        >
+        {/* BACKUP QR MODAL */}
+        {showBackup && lastCode && (
           <div
             style={{
-              width: "min(520px, 100%)",
-              background: "white",
-              borderRadius: 12,
-              overflow: "hidden",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.75)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+              zIndex: 10000,
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setShowBackup(false)}
           >
             <div
-              style={{
-                padding: 12,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: "1px solid #eee",
-              }}
+              className="card"
+              style={{ width: "min(520px, 100%)", padding: 0, overflow: "hidden" }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <strong>Backup QR for guest phone</strong>
-              <button
-                type="button"
-                onClick={() => setShowBackup(false)}
+              <div
                 style={{
-                  border: "1px solid #ddd",
-                  background: "white",
-                  borderRadius: 8,
-                  padding: "6px 10px",
-                  cursor: "pointer",
+                  padding: 12,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottom: "1px solid rgba(255,255,255,0.10)",
                 }}
               >
-                Close
-              </button>
-            </div>
+                <strong>Backup QR for guest phone</strong>
+                <button type="button" onClick={() => setShowBackup(false)} className="btnSecondary" style={{ width: "auto" }}>
+                  Close
+                </button>
+              </div>
 
-            <div style={{ padding: 12 }}>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <div
-                  style={{
-                    border: "1px solid #eee",
-                    borderRadius: 12,
-                    padding: 10,
-                  }}
-                >
-                  <QRCodeCanvas value={backupUrl || lastCode} size={220} includeMargin />
-                </div>
-
-                <div style={{ flex: 1, minWidth: 220 }}>
-                  <div style={{ fontSize: 13, opacity: 0.75 }}>
-                    Guest scans this once → gets their QR page
-                  </div>
-
-                  <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800 }}>
-                    #{lastCode}
-                  </div>
-
+              <div style={{ padding: 12 }}>
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
                   <div
                     style={{
-                      marginTop: 10,
-                      fontSize: 12,
-                      opacity: 0.8,
-                      wordBreak: "break-all",
-                      border: "1px dashed #ddd",
-                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: 12,
                       padding: 10,
+                      background: "rgba(255,255,255,0.04)",
                     }}
                   >
-                    {backupUrl}
+                    <div
+                      style={{
+                        background: "white",
+                        borderRadius: 14,
+                        padding: 12,
+                      }}
+                    >
+                      <QRCodeCanvas value={backupUrl || lastCode} size={220} includeMargin />
+                    </div>
                   </div>
 
-                  {/* ✅ V TOI ZHE VKLADKE */}
-                  <Link
-                    href={`/b/${encodeURIComponent(lastCode)}`}
-                    onClick={() => setShowBackup(false)}
-                    style={{
-                      display: "inline-block",
-                      marginTop: 10,
-                      textDecoration: "none",
-                      border: "1px solid #111",
-                      borderRadius: 10,
-                      padding: "10px 12px",
-                      color: "#111",
-                      fontSize: 14,
-                    }}
-                  >
-                    Open backup page →
-                  </Link>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ fontSize: 13, opacity: 0.75 }}>
+                      Guest scans this once → gets their QR page
+                    </div>
 
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-                    Tip: “Add to Home Screen” on phone.
+                    <div style={{ marginTop: 8, fontSize: 18, fontWeight: 900 }}>
+                      #{lastCode}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 10,
+                        fontSize: 12,
+                        opacity: 0.8,
+                        wordBreak: "break-all",
+                        border: "1px dashed rgba(255,255,255,0.18)",
+                        borderRadius: 10,
+                        padding: 10,
+                        background: "rgba(0,0,0,0.25)",
+                      }}
+                    >
+                      {backupUrl}
+                    </div>
+
+                    {/* ✅ V TOI ZHE VKLADKE */}
+                    <Link
+                      href={`/b/${encodeURIComponent(lastCode)}`}
+                      onClick={() => setShowBackup(false)}
+                      className="btn"
+                      style={{
+                        display: "inline-flex",
+                        width: "auto",
+                        marginTop: 10,
+                        justifyContent: "center",
+                        padding: "10px 12px",
+                      }}
+                    >
+                      Open backup page →
+                    </Link>
+
+                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+                      Tip: “Add to Home Screen” on phone.
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </main>
+        )}
+      </main>
+    </div>
   );
 }
