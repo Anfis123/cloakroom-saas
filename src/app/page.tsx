@@ -1,6 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { staffLogout, useRequireStaff } from "./utils/requireStaff";
 
 export default function Home() {
+  const ready = useRequireStaff();
+  const router = useRouter();
+
+  if (!ready) return null;
+
+  const bg =
+    "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.18), rgba(0,0,0,0.95))";
+
   const btn: React.CSSProperties = {
     width: 300,
     padding: "14px 18px",
@@ -17,6 +29,25 @@ export default function Home() {
     backdropFilter: "blur(6px)",
   };
 
+  const logoutBtn: React.CSSProperties = {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    padding: "8px 14px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(0,0,0,0.6)",
+    color: "white",
+    cursor: "pointer",
+    fontSize: 13,
+    backdropFilter: "blur(6px)",
+  };
+
+  const logout = () => {
+    staffLogout();
+    router.replace("/login?next=%2F");
+  };
+
   return (
     <main
       style={{
@@ -28,10 +59,13 @@ export default function Home() {
         gap: 16,
         padding: 22,
         color: "white",
-        background:
-          "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.35), rgba(0,0,0,0.95))",
+        background: bg,
       }}
     >
+      <button onClick={logout} style={logoutBtn}>
+        Logout
+      </button>
+
       <h1
         style={{
           fontSize: 44,

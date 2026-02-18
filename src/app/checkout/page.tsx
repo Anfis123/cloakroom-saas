@@ -7,7 +7,6 @@ import { useCloakroomStore } from "../store/cloakroomStore";
 import { useRequireStaff } from "../utils/requireStaff";
 
 export default function CheckOutPage() {
-  // ✅ hooks snachala
   const ready = useRequireStaff();
 
   const [wristband, setWristband] = useState("");
@@ -26,12 +25,11 @@ export default function CheckOutPage() {
     setLastCheckedOut(code);
   };
 
-  // ✅ tolko posle hooks
   if (!ready) return null;
 
   return (
     <div className="container">
-      <main className="card" style={{ width: "min(560px, 100%)" }}>
+      <main className="card" style={{ width: "min(560px, 100%)", color: "white" }}>
         <h1 className="h1">Check Out Item</h1>
         <div className="sub">Scan wristband QR, then confirm check-out.</div>
 
@@ -46,42 +44,25 @@ export default function CheckOutPage() {
             }}
           />
 
-          {/* ✅ OPEN CAMERA SCANNER (kak v check-in) */}
-          <button
-            type="button"
-            onClick={() => setShowScanner(true)}
-            className="btnSecondary"
-          >
+          <button type="button" onClick={() => setShowScanner(true)} className="btnSecondary">
             Open Camera Scanner
           </button>
 
-          <button
-            type="button"
-            onClick={() => doCheckOut(wristband)}
-            className="btn"
-          >
+          <button type="button" onClick={() => doCheckOut(wristband)} className="btn">
             Confirm Check Out
           </button>
 
           {lastCheckedOut && (
-            <div style={{ marginTop: 4, fontSize: 14, opacity: 0.85 }}>
+            <div style={{ marginTop: 4, fontSize: 14, opacity: 0.9 }}>
               Checked out: <b>#{lastCheckedOut}</b>
             </div>
           )}
 
           <div className="row" style={{ marginTop: 6 }}>
-            <Link
-              href="/checkin"
-              className="btnSecondary"
-              style={{ textAlign: "center" }}
-            >
+            <Link href="/checkin" className="btnSecondary" style={{ textAlign: "center" }}>
               ← Check In
             </Link>
-            <Link
-              href="/"
-              className="btnSecondary"
-              style={{ textAlign: "center" }}
-            >
+            <Link href="/" className="btnSecondary" style={{ textAlign: "center" }}>
               ← Back to Home
             </Link>
           </div>
@@ -94,24 +75,23 @@ export default function CheckOutPage() {
           </div>
 
           {items.length === 0 ? (
-            <div style={{ marginTop: 10, opacity: 0.7 }}>No items yet.</div>
+            <div style={{ marginTop: 10, opacity: 0.8 }}>No items yet.</div>
           ) : (
             <div className="list">
               {items.map((item) => (
                 <div key={item.code} className="listItem">
                   <div style={{ fontWeight: 900 }}>#{item.code}</div>
-                  <div style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</div>
+                  <div style={{ opacity: 0.75, fontSize: 13 }}>{item.status}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* ✅ QR SCANNER MODAL */}
         {showScanner && (
           <QRScanner
             onResult={(text) => {
-              doCheckOut(text); // ✅ srazu check-out posle skana
+              doCheckOut(text);
               setShowScanner(false);
             }}
             onClose={() => setShowScanner(false)}

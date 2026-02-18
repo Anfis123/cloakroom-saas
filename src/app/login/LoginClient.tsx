@@ -16,7 +16,6 @@ export default function LoginClient() {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  // PIN berem iz env (klientskij)
   const STAFF_PIN = process.env.NEXT_PUBLIC_STAFF_PIN || "1234";
 
   const submit = (e: React.FormEvent) => {
@@ -32,6 +31,9 @@ export default function LoginClient() {
     router.replace(next);
   };
 
+  const bg =
+    "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.18), rgba(0,0,0,0.95))";
+
   return (
     <main
       style={{
@@ -40,30 +42,26 @@ export default function LoginClient() {
         alignItems: "center",
         justifyContent: "center",
         padding: 22,
+        background: bg,
         color: "white",
-        background:
-          "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.35), rgba(0,0,0,0.95))",
       }}
     >
       <form
         onSubmit={submit}
         style={{
-          width: "min(420px, 100%)",
-          borderRadius: 16,
+          width: "min(520px, 100%)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 18,
           padding: 18,
-          background: "rgba(0,0,0,0.75)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 16px 50px rgba(0,0,0,0.55)",
-          backdropFilter: "blur(8px)",
+          background: "rgba(0,0,0,0.55)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+          backdropFilter: "blur(12px)",
+          color: "white",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h1 style={{ fontSize: 26, margin: 0, fontWeight: 900 }}>
-            Staff Login
-          </h1>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>
-            Enter PIN to access staff pages
-          </div>
+        <h1 style={{ fontSize: 28, margin: 0, fontWeight: 900 }}>Staff Login</h1>
+        <div style={{ marginTop: 6, fontSize: 13, opacity: 0.78 }}>
+          Enter PIN to access staff pages
         </div>
 
         <input
@@ -73,27 +71,20 @@ export default function LoginClient() {
           inputMode="numeric"
           autoFocus
           style={{
-            marginTop: 14,
+            marginTop: 12,
             width: "100%",
             padding: 12,
             borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.12)",
             outline: "none",
             fontSize: 16,
-            background: "rgba(255,255,255,0.06)",
+            background: "rgba(0,0,0,0.35)",
             color: "white",
           }}
         />
 
         {err && (
-          <div
-            style={{
-              marginTop: 10,
-              color: "#ff6b6b",
-              fontSize: 14,
-              fontWeight: 700,
-            }}
-          >
+          <div style={{ marginTop: 10, color: "#ff5a5a", fontWeight: 700 }}>
             {err}
           </div>
         )}
@@ -101,23 +92,22 @@ export default function LoginClient() {
         <button
           type="submit"
           style={{
-            marginTop: 14,
+            marginTop: 12,
             width: "100%",
             padding: "12px 14px",
             borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(0,0,0,0.85)",
-            color: "white",
+            border: "none",
+            background: "white",
+            color: "#111",
             cursor: "pointer",
             fontSize: 16,
-            fontWeight: 700,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+            fontWeight: 900,
           }}
         >
           Continue
         </button>
 
-        <div style={{ marginTop: 12, fontSize: 12, opacity: 0.65 }}>
+        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
           Tip: session expires automatically (idle + hidden lock).
         </div>
       </form>
