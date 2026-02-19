@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -17,11 +18,7 @@ export const metadata: Metadata = {
   description: "QR wristband cloakroom SaaS",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body
@@ -29,19 +26,14 @@ export default function RootLayout({
         style={{
           margin: 0,
           color: "white",
-
-          /* 🔥 ГЛАВНЫЙ ФОН — ТЁМНЫЙ */
           background:
             "radial-gradient(1200px 700px at 50% 40%, rgba(120,120,120,0.25), rgba(0,0,0,0.95))",
-
-          /* ✨ Плавная анимация */
           backgroundSize: "140% 140%",
           animation: "bgMove 18s ease-in-out infinite",
         }}
       >
         {children}
 
-        {/* 🎬 animation style */}
         <style>
           {`
             @keyframes bgMove {

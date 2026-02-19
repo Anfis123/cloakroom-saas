@@ -17,18 +17,28 @@ export default function LoginClient() {
   const [err, setErr] = useState<string | null>(null);
 
   const STAFF_PIN = process.env.NEXT_PUBLIC_STAFF_PIN || "1234";
+  const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || "";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
 
-    if (pin.trim() !== STAFF_PIN) {
-      setErr("Wrong PIN");
+    const p = pin.trim();
+
+    // admin imeet prioritet esli pin sovpal
+    if (ADMIN_PIN && p === ADMIN_PIN) {
+      setStaffSession("admin");
+      router.replace(next);
       return;
     }
 
-    setStaffSession();
-    router.replace(next);
+    if (p === STAFF_PIN) {
+      setStaffSession("staff");
+      router.replace(next);
+      return;
+    }
+
+    setErr("Wrong PIN");
   };
 
   const bg =
@@ -109,6 +119,12 @@ export default function LoginClient() {
 
         <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
           Tip: session expires automatically (idle + hidden lock).
+        </div>
+
+        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
+          {ADMIN_PIN
+            ? "Tip: admin mode enabled (NEXT_PUBLIC_ADMIN_PIN)."
+            : "Tip: set NEXT_PUBLIC_ADMIN_PIN in .env.local to enable admin mode."}
         </div>
       </form>
     </main>

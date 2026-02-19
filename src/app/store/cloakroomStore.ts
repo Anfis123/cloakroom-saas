@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { isValidCode, normalizeCode } from "../utils/wristbandCode";
 
 export type ActiveItem = {
   code: string;
@@ -17,16 +18,20 @@ export type HistoryEvent = {
 };
 
 type CloakroomState = {
-  items: ActiveItem[];        // только активные (IN)
-  history: HistoryEvent[];    // лог событий (90 дней)
+  items: ActiveItem[]; // tol'ko aktivnye (IN)
+  history: HistoryEvent[]; // log sobytij (90 dnej)
   checkIn: (code: string) => void;
   checkOut: (code: string) => void;
+
+  clearActiveItems: () => void; // ✅ admin-only knopka na UI
+  clearAllData: () => void;     // ✅ na vsyakij (admin-only)
+
   clearHistory: () => void;
   cleanupHistory: () => void;
 };
 
-const HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 дней
-const MAX_HISTORY_EVENTS = 5000; // защита от бесконечного роста
+const HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 dnej
+const MAX_HISTORY_EVENTS = 5000;
 
 function now() {
   return Date.now();
@@ -34,7 +39,6 @@ function now() {
 
 function getStaffName(): string {
   try {
-    // если позже добавим имя — будем брать отсюда
     const n = localStorage.getItem("staff_name");
     return (n && n.trim()) || "staff";
   } catch {
@@ -49,15 +53,13 @@ function makeId() {
 function cleanup(events: HistoryEvent[]) {
   const minTs = now() - HISTORY_RETENTION_MS;
   const filtered = events.filter((e) => e.at >= minTs);
-
-  // оставляем самые свежие MAX_HISTORY_EVENTS
   filtered.sort((a, b) => b.at - a.at);
   return filtered.slice(0, MAX_HISTORY_EVENTS);
 }
 
 export const useCloakroomStore = create<CloakroomState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       items: [],
       history: [],
 
@@ -67,14 +69,18 @@ export const useCloakroomStore = create<CloakroomState>()(
 
       clearHistory: () => set({ history: [] }),
 
+      clearActiveItems: () => set({ items: [] }),
+
+      clearAllData: () => set({ items: [], history: [] }),
+
       checkIn: (rawCode: string) => {
-        const code = rawCode.trim();
+        const code = normalizeCode(rawCode);
         if (!code) return;
+        if (!isValidCode(code)) return;
 
         const staff = getStaffName();
 
         set((state) => {
-          // если уже IN — не дублируем
           if (state.items.some((it) => it.code === code)) {
             return { history: cleanup(state.history) };
           }
@@ -102,15 +108,14 @@ export const useCloakroomStore = create<CloakroomState>()(
       },
 
       checkOut: (rawCode: string) => {
-        const code = rawCode.trim();
+        const code = normalizeCode(rawCode);
         if (!code) return;
+        if (!isValidCode(code)) return;
 
         const staff = getStaffName();
 
         set((state) => {
           const exists = state.items.some((it) => it.code === code);
-
-          // если нет такого IN — просто чистим history (на всякий)
           if (!exists) {
             return { history: cleanup(state.history) };
           }
@@ -124,7 +129,6 @@ export const useCloakroomStore = create<CloakroomState>()(
           };
 
           return {
-            // удаляем из активных IN
             items: state.items.filter((it) => it.code !== code),
             history: cleanup([event, ...state.history]),
           };

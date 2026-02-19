@@ -4,21 +4,32 @@ import { useState } from "react";
 import Link from "next/link";
 import QRScanner from "../components/QRScanner";
 import { useCloakroomStore } from "../store/cloakroomStore";
-import { useRequireStaff } from "../utils/requireStaff";
+import { useIsAdmin, useRequireStaff } from "../utils/requireStaff";
+import { isValidCode, normalizeCode } from "../utils/wristbandCode";
 
 export default function CheckOutPage() {
   const ready = useRequireStaff();
+  const isAdmin = useIsAdmin();
 
   const [wristband, setWristband] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [lastCheckedOut, setLastCheckedOut] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const items = useCloakroomStore((s) => s.items);
   const checkOut = useCloakroomStore((s) => s.checkOut);
+  const clearActiveItems = useCloakroomStore((s) => s.clearActiveItems);
 
   const doCheckOut = (raw: string) => {
-    const code = raw.trim();
+    setErr(null);
+
+    const code = normalizeCode(raw);
     if (!code) return;
+
+    if (!isValidCode(code)) {
+      setErr("Invalid code. Format: WC-XXXXXXXX (8 symbols).");
+      return;
+    }
 
     checkOut(code);
     setWristband("");
@@ -29,7 +40,7 @@ export default function CheckOutPage() {
 
   return (
     <div className="container">
-      <main className="card" style={{ width: "min(560px, 100%)", color: "white" }}>
+      <main className="card" style={{ width: "min(560px, 100%)" }}>
         <h1 className="h1">Check Out Item</h1>
         <div className="sub">Scan wristband QR, then confirm check-out.</div>
 
@@ -44,6 +55,12 @@ export default function CheckOutPage() {
             }}
           />
 
+          {err && (
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#ff5a5a" }}>
+              {err}
+            </div>
+          )}
+
           <button type="button" onClick={() => setShowScanner(true)} className="btnSecondary">
             Open Camera Scanner
           </button>
@@ -53,8 +70,8 @@ export default function CheckOutPage() {
           </button>
 
           {lastCheckedOut && (
-            <div style={{ marginTop: 4, fontSize: 14, opacity: 0.9 }}>
-              Checked out: <b>#{lastCheckedOut}</b>
+            <div style={{ marginTop: 4, fontSize: 14, opacity: 0.85 }}>
+              Checked out: <b>{lastCheckedOut}</b>
             </div>
           )}
 
@@ -66,6 +83,18 @@ export default function CheckOutPage() {
               ← Back to Home
             </Link>
           </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              className="btnSecondary"
+              onClick={() => {
+                if (confirm("ADMIN: Clear ALL active checked-in items?")) clearActiveItems();
+              }}
+            >
+              ADMIN: Clear active items
+            </button>
+          )}
         </div>
 
         <div style={{ marginTop: 18 }}>
@@ -75,13 +104,13 @@ export default function CheckOutPage() {
           </div>
 
           {items.length === 0 ? (
-            <div style={{ marginTop: 10, opacity: 0.8 }}>No items yet.</div>
+            <div style={{ marginTop: 10, opacity: 0.7 }}>No items yet.</div>
           ) : (
             <div className="list">
               {items.map((item) => (
                 <div key={item.code} className="listItem">
-                  <div style={{ fontWeight: 900 }}>#{item.code}</div>
-                  <div style={{ opacity: 0.75, fontSize: 13 }}>{item.status}</div>
+                  <div style={{ fontWeight: 900 }}>{item.code}</div>
+                  <div style={{ opacity: 0.7, fontSize: 13 }}>{item.status}</div>
                 </div>
               ))}
             </div>

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { staffLogout, useRequireStaff } from "./utils/requireStaff";
+import { staffLogout, useIsAdmin, useRequireStaff } from "@/app/utils/requireStaff";
 
 export default function Home() {
   const ready = useRequireStaff();
+  const isAdmin = useIsAdmin();
   const router = useRouter();
 
   if (!ready) return null;
@@ -60,6 +61,7 @@ export default function Home() {
         padding: 22,
         color: "white",
         background: bg,
+        position: "relative",
       }}
     >
       <button onClick={logout} style={logoutBtn}>
@@ -89,6 +91,16 @@ export default function Home() {
       <Link href="/history" style={btn}>
         History
       </Link>
+
+      {isAdmin ? (
+        <Link href="/generate" style={btn}>
+          Generate Codes (Admin)
+        </Link>
+      ) : (
+        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.55 }}>
+          Admin buttons are hidden for staff.
+        </div>
+      )}
     </main>
   );
 }
