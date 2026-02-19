@@ -1,11 +1,9 @@
-// ✅ FILE: src/app/history/page.tsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useCloakroomStore } from "../store/cloakroomStore";
-import { useRequireStaff } from "../utils/requireStaff";
-import { isAdmin } from "../utils/admin";
+import { useIsAdmin, useRequireStaff } from "../utils/requireStaff";
 
 function fmt(ts: number) {
   const d = new Date(ts);
@@ -14,7 +12,7 @@ function fmt(ts: number) {
 
 export default function HistoryPage() {
   const ready = useRequireStaff();
-  const admin = isAdmin();
+  const admin = useIsAdmin();
 
   const history = useCloakroomStore((s) => s.history);
   const cleanupHistory = useCloakroomStore((s) => s.cleanupHistory);
@@ -148,7 +146,7 @@ export default function HistoryPage() {
               type="button"
               style={adminRowBtn}
               onClick={() => {
-                if (confirm("ADMIN: Clear active checked-in items?")) clearActiveItems();
+                if (confirm("ADMIN: Clear ALL active checked-in items?")) clearActiveItems();
               }}
             >
               Admin: Clear checked-in
@@ -156,7 +154,7 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {/* CLEAR (staff can keep this if you want; if not — wrap with admin) */}
+        {/* 👇 Esli hochesh chtoby staff NE mog clear history — obverni eto v {admin && (...)} */}
         <div style={{ marginTop: 12 }}>
           <button
             type="button"
