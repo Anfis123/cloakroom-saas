@@ -19,7 +19,7 @@ export default function HistoryPage() {
   const history = useCloakroomStore((s) => s.history);
   const cleanupHistory = useCloakroomStore((s) => s.cleanupHistory);
   const clearHistory = useCloakroomStore((s) => s.clearHistory);
-  const clearItems = useCloakroomStore((s) => s.clearItems);
+  const clearActiveItems = useCloakroomStore((s) => s.clearActiveItems);
 
   useEffect(() => {
     cleanupHistory();
@@ -148,7 +148,7 @@ export default function HistoryPage() {
               type="button"
               style={adminRowBtn}
               onClick={() => {
-                if (confirm("ADMIN: Clear active checked-in items?")) clearItems();
+                if (confirm("ADMIN: Clear active checked-in items?")) clearActiveItems();
               }}
             >
               Admin: Clear checked-in
