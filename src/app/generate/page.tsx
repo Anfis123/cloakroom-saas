@@ -1,9 +1,12 @@
+// ✅ FILE: src/app/generate/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { useIsAdmin, useRequireStaff } from "../utils/requireStaff";
 import { CODE_CHARS, CODE_BODY_LEN, WRISTBAND_PREFIX } from "../utils/wristbandCode";
+import { downloadUltraWristbandPdf } from "../utils/wristbandPdfUltra";
 
 function randChar() {
   const i = Math.floor(Math.random() * CODE_CHARS.length);
@@ -42,6 +45,9 @@ export default function GeneratePage() {
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  const [eventName, setEventName] = useState("My Event");
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
   const [count, setCount] = useState<number>(100);
   const [codes, setCodes] = useState<string[]>([]);
@@ -101,6 +107,34 @@ export default function GeneratePage() {
     }
   };
 
+  const downloadAllQR = async () => {
+    if (!origin) return;
+
+    // simple loop downloads (browser will download multiple files)
+    for (const c of codes) {
+      const url = `${origin}/b/${encodeURIComponent(c)}`;
+      const data = await QRCode.toDataURL(url, { margin: 1, width: 900 });
+
+      const a = document.createElement("a");
+      a.href = data;
+      a.download = `${c}.png`;
+      a.click();
+    }
+  };
+
+  const onLogoPick = (file: File | null) => {
+    if (!file) {
+      setLogoDataUrl(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = typeof reader.result === "string" ? reader.result : null;
+      setLogoDataUrl(res);
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (!ready) return null;
 
   // ✅ admin-only
@@ -109,9 +143,7 @@ export default function GeneratePage() {
       <div className="container">
         <main className="card" style={{ width: "min(640px, 100%)" }}>
           <h1 className="h1">Generate Wristband Codes</h1>
-          <div className="sub">
-            This page is <b>admin-only</b>.
-          </div>
+          <div className="sub">This page is <b>admin-only</b>.</div>
 
           <div style={{ marginTop: 14 }} className="row">
             <Link href="/" className="btnSecondary" style={{ textAlign: "center" }}>
@@ -125,13 +157,46 @@ export default function GeneratePage() {
 
   return (
     <div className="container">
-      <main className="card" style={{ width: "min(760px, 100%)" }}>
+      <main className="card" style={{ width: "min(820px, 100%)" }}>
         <h1 className="h1">Generate Wristband Codes</h1>
+
         <div className="sub">
-          One click → generate <b>WC-XXXXXXXX</b> codes. Export as CSV for printing / production.
+          ULTRA PRO print: <b>19×250mm wristbands</b> + crop marks + perforation + optional logo.
         </div>
 
         <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+          <input
+            className="input"
+            placeholder="Event name (printed on wristband)..."
+            value={eventName}
+            onChange={(e) => setEventName(e.target.value)}
+          />
+
+          <div className="row">
+            <label className="btnSecondary" style={{ cursor: "pointer", textAlign: "center" }}>
+              Upload logo (optional)
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => onLogoPick(e.target.files?.[0] || null)}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="btnSecondary"
+              onClick={() => setLogoDataUrl(null)}
+              disabled={!logoDataUrl}
+            >
+              Remove logo
+            </button>
+
+            <div className="badge" style={{ alignSelf: "center" }}>
+              {logoDataUrl ? "logo: ON" : "logo: OFF"}
+            </div>
+          </div>
+
           <div className="row">
             <button type="button" className="btnSecondary" onClick={() => setCount(100)}>
               100
@@ -189,11 +254,33 @@ export default function GeneratePage() {
             <button
               type="button"
               className="btnSecondary"
-              onClick={() => setCodes([])}
+              onClick={() => downloadAllQR()}
               style={{ textAlign: "center" }}
-              disabled={codes.length === 0}
+              disabled={codes.length === 0 || !origin}
             >
-              Clear
+              Download PNG QR
+            </button>
+
+            {/* ✅ ULTRA PRO PDF */}
+            <button
+              type="button"
+              className="btnSecondary"
+              onClick={() =>
+                downloadUltraWristbandPdf({
+                  codes,
+                  eventName,
+                  origin,
+                  logoDataUrl,
+                  bandsPerPage: 5,
+                  bleedMm: 2,
+                  showCutMarks: true,
+                  showPerforation: true,
+                })
+              }
+              style={{ textAlign: "center" }}
+              disabled={codes.length === 0 || !origin}
+            >
+              Download ULTRA PRO PDF
             </button>
           </div>
 
@@ -235,7 +322,7 @@ export default function GeneratePage() {
         </div>
 
         <div style={{ marginTop: 12, fontSize: 12, opacity: 0.72 }}>
-          Notes: CSV contains <b>code</b> and <b>backup URL</b> (page /b/...). You can print QR from codes later.
+          Print tip: Use <b>ULTRA PRO PDF</b> for wristbands. It includes crop marks + bleed + perforation.
         </div>
       </main>
     </div>

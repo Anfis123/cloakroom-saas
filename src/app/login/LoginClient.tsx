@@ -1,3 +1,4 @@
+// ✅ FILE: src/app/login/LoginClient.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -13,7 +14,7 @@ export default function LoginClient() {
     return raw && raw.startsWith("/") ? raw : "/";
   }, [sp]);
 
-  const [pin, setPin] = useState("");
+    const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
   const STAFF_PIN = process.env.NEXT_PUBLIC_STAFF_PIN || "1234";
@@ -32,7 +33,7 @@ export default function LoginClient() {
       return;
     }
 
-    if (p === STAFF_PIN) {
+        if (p === STAFF_PIN) {
       setStaffSession("staff");
       router.replace(next);
       return;
@@ -54,7 +55,7 @@ export default function LoginClient() {
         padding: 22,
         background: bg,
         color: "white",
-      }}
+             }}
     >
       <form
         onSubmit={submit}
@@ -78,7 +79,12 @@ export default function LoginClient() {
           value={pin}
           onChange={(e) => setPin(e.target.value)}
           placeholder="PIN..."
+          // ✅ скрываем ввод звёздочками
+          type="password"
+          // ✅ оставляем цифровую клавиатуру на телефоне
           inputMode="numeric"
+          // ✅ чуть лучше автозаполнение (браузеры любят это)
+          autoComplete="current-password"
           autoFocus
           style={{
             marginTop: 12,
